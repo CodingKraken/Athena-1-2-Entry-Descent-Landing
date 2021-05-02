@@ -8,6 +8,7 @@ DECLARE GLOBAL HEATSHIELD TO FALSE.
 DECLARE GLOBAL BACKSHELL TO FALSE.
 DECLARE GLOBAL ENGINESTART TO FALSE.
 DECLARE GLOBAL CONSTVELOCITY TO FALSE.
+DECLARE GLOBAL CUTOFF TO FALSE.
 
 // Flight Globals.
 DECLARE GLOBAL REALALT TO 400000.
@@ -27,6 +28,20 @@ DECLARE GLOBAL FUNCTION PRINTSTATE {
     PARAMETER STATE.
     PRINT "                   " AT(20,6).
     PRINT STATE AT(20,6).
+}
+
+// Engine throttle control
+DECLARE GLOBAL FUNCTION SPEEDSET {
+    PARAMETER SPEED.
+
+    // Set TWR based on surface velocity and inputted speed.
+    SET OFFSET TO 0.2.
+    SET TWR TO 2*(1/(1+CONSTANT:E^(-0.5*(SHIP:AIRSPEED-SPEED-OFFSET)))).
+
+    // If velocity falls under input speed lower TWR to below 1.0.
+    IF SHIP:AIRSPEED - SPEED < 0 {
+        SET TWR TO 0.95.
+    }
 }
 
 // Setup
@@ -63,6 +78,7 @@ UNTIL EDLCOMP {
 
     // Update flight state
     PRINT EDLMODE AT(20,5).
+    PRINT "              " AT(20,7).
     PRINT ROUND(REALALT, 2) AT(20,7).
     PRINT "              " AT(20,8).
     PRINT ROUND(ABS(SHIP:AIRSPEED),2) AT(20,8).
@@ -156,45 +172,47 @@ UNTIL EDLCOMP {
             IF REALALT < 950 {
 
                 // Phase I landing sequence
+
                 IF REALALT > 80 {
 
-                    // While velocity is above 20 m/s, follow thrust curve, if not, maintain 1g deceleration
-                    IF SHIP:AIRSPEED > 20 {
-                        SET TWR TO 2*(1/(1+CONSTANT:E^(-0.5*(SHIP:AIRSPEED-20)))).
-                    } ELSE {
-                        SET TWR TO 0.9.
-                    }
+                    // In Phase I, decelerate to 20 m/s and hold
+                    SPEEDSET(20).
                     PRINTSTATE("VERTICAL DESCENT").
-                    LOCK STEERING TO SRFRETROGRADE.
+                    IF SHIP:GROUNDSPEED > 0.1 {
+                        LOCK STEERING TO SRFRETROGRADE.
+                    } ELSE {
+                        LOCK STEERING TO HEADING(0,90).
+                    }
                 } ELSE {
 
                     // Phase II landing sequence
 
-                    // Decelerate to 1 m/s and hold once below 80 meters
-                    IF SHIP:AIRSPEED > 1 {
-                        SET TWR TO 2*(1/(1+CONSTANT:E^(-0.5*(SHIP:AIRSPEED-1)))).
+                    // Decelerate to 1 m/s and hold if the vehicle isn't in final freefall
+                    IF NOT CUTOFF {
+                        SPEEDSET(1).
+                        
                         IF NOT CONSTVELOCITY {
                             PRINTSTATE("PERFORMING SLOWDOWN").
                         }
-                    } ELSE {
+
 
                         // If horizontal velocity exceeds 0.2 m/s, point prograde. Otherwise maintain vertical orientation
-                        IF SHIP:GROUNDSPEED > 0.2 {
-                            LOCK STEERING TO SRFRETROGRADE.
-                        } ELSE {
-                            LOCK STEERING TO HEADING(0,90).
+
+                        IF SHIP:AIRSPEED < 1.1 {
+                            PRINTSTATE("CONST VELOCITY").
+                            SET CONSTVELOCITY TO TRUE.
                         }
-                        IF SHIP:VERTICALSPEED <= 1 {
-                            SET TWR TO 0.9.
-                        }
-                        PRINTSTATE("CONST VELOCITY").
-                        SET CONSTVELOCITY TO TRUE.
                     }
+
                     // Once below 1 meter, cut engine power. Once speed drops below 50 cm/s, end EDL script
                     IF REALALT < 1.0 {
                         SET TWR TO 0.0.
-                        IF SHIP:AIRSPEED <= 0.5 {
+                        SET CUTOFF TO TRUE.
+                        PRINTSTATE("CUTOFF").
+
+                        IF SHIP:AIRSPEED < 0.5 {
                             PRINTSTATE("EDL COMPLETE").
+                            RCS OFF.
                             SET EDLCOMP TO TRUE.
                         }
                     }
