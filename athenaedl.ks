@@ -7,7 +7,6 @@ DECLARE GLOBAL PARACHUTE TO FALSE.
 DECLARE GLOBAL HEATSHIELD TO FALSE.
 DECLARE GLOBAL BACKSHELL TO FALSE.
 DECLARE GLOBAL ENGINESTART TO FALSE.
-DECLARE GLOBAL CONSTVELOCITY TO FALSE.
 
 // Flight Globals.
 DECLARE GLOBAL REALALT TO 400000.
@@ -144,6 +143,9 @@ UNTIL EDLCOMP {
             }
         }
         IF ENGINESTART {
+            IF REALALT > 950 AND REALALT < 1300 {
+                PRINTSTATE("PERFORMING DIVERT").
+            }
 
             // Lock throttle values to commanded TWR
             SET THRUSTVAL TO TWR * SHIP:MASS * G / SHIP:AVAILABLETHRUST.
@@ -151,11 +153,6 @@ UNTIL EDLCOMP {
             
             // Landing logic
             IF REALALT < 950 {
-
-                // If not in constant velocity mode, maintain retrograde
-                IF NOT CONSTVELOCITY {
-                    LOCK STEERING TO SRFRETROGRADE.
-                }
 
                 // Phase I landing sequence
                 IF REALALT > 80 {
@@ -166,6 +163,8 @@ UNTIL EDLCOMP {
                     } ELSE {
                         SET TWR TO 0.9.
                     }
+
+                    PRINTSTATE("VERTICAL DESCENT").
                 } ELSE {
 
                     // Phase II landing sequence
@@ -173,8 +172,9 @@ UNTIL EDLCOMP {
                     // Decelerate to 1 m/s and hold once below 80 meters
                     IF SHIP:AIRSPEED > 1 {
                         SET TWR TO 2*(1/(1+CONSTANT:E^(-0.5*(SHIP:AIRSPEED-1)))).
+                        PRINTSTATE("PERFORMING SLOWDOWN").
                     } ELSE {
-                        
+
                         // If horizontal velocity exceeds 0.2 m/s, point prograde. Otherwise maintain vertical orientation
                         IF SHIP:GROUNDSPEED > 0.2 {
                             LOCK STEERING TO SRFRETROGRADE.
@@ -185,7 +185,6 @@ UNTIL EDLCOMP {
                             SET TWR TO 0.9.
                         }
                         PRINTSTATE("CONST VELOCITY").
-                        SET CONSTVELOCITY TO TRUE.
                     }
                     // Once below 1 meter, cut engine power. Once speed drops below 10 cm/s, end EDL script
                     IF REALALT < 1.0 {
