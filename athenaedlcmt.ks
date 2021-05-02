@@ -35,8 +35,11 @@ DECLARE GLOBAL FUNCTION SPEEDSET {
     PARAMETER SPEED.
 
     // Set TWR based on surface velocity and inputted speed.
+
+    // Scale linearly changes precision of TWR depending on velocity. Lower precision for higher input speeds.
     SET OFFSET TO 0.2.
-    SET TWR TO 2*(1/(1+CONSTANT:E^(-0.5*(SHIP:AIRSPEED-SPEED-OFFSET)))).
+    SET SCALE TO 1/19*SPEED-59/38.
+    SET TWR TO 2*(1/(1+CONSTANT:E^(SCALE*(SHIP:AIRSPEED-SPEED-OFFSET)))).
 
     // If velocity falls under input speed lower TWR to below 1.0.
     IF SHIP:AIRSPEED - SPEED < 0 {
