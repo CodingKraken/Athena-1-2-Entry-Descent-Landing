@@ -53,6 +53,7 @@ UNTIL EDLCOMP {
     }
 
     PRINT EDLMODE AT(20,5).
+    PRINT "              " AT(20,7).
     PRINT ROUND(REALALT, 2) AT(20,7).
     PRINT "              " AT(20,8).
     PRINT ROUND(ABS(SHIP:AIRSPEED),2) AT(20,8).
@@ -155,7 +156,7 @@ UNTIL EDLCOMP {
                     }
                     IF REALALT < 1.0 {
                         SET TWR TO 0.0.
-                        IF SHIP:AIRSPEED <= 0.1 {
+                        IF SHIP:AIRSPEED <= 0.5 {
                             PRINTSTATE("EDL COMPLETE").
                             SET EDLCOMP TO TRUE.
                         }
