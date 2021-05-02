@@ -190,10 +190,10 @@ UNTIL EDLCOMP {
                         PRINTSTATE("CONST VELOCITY").
                         SET CONSTVELOCITY TO TRUE.
                     }
-                    // Once below 1 meter, cut engine power. Once speed drops below 10 cm/s, end EDL script
+                    // Once below 1 meter, cut engine power. Once speed drops below 50 cm/s, end EDL script
                     IF REALALT < 1.0 {
                         SET TWR TO 0.0.
-                        IF SHIP:AIRSPEED <= 0.1 {
+                        IF SHIP:AIRSPEED <= 0.5 {
                             PRINTSTATE("EDL COMPLETE").
                             SET EDLCOMP TO TRUE.
                         }
