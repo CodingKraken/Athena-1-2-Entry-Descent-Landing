@@ -7,6 +7,7 @@ DECLARE GLOBAL HEATSHIELD TO FALSE.
 DECLARE GLOBAL BACKSHELL TO FALSE.
 DECLARE GLOBAL ENGINESTART TO FALSE.
 DECLARE GLOBAL CONSTVELOCITY TO FALSE.
+DECLARE GLOBAL CUTOFF TO FALSE.
 
 DECLARE GLOBAL REALALT TO 400000.
 DECLARE GLOBAL TWR TO 1.0.
@@ -23,6 +24,17 @@ DECLARE GLOBAL FUNCTION PRINTSTATE {
     PARAMETER STATE.
     PRINT "                   " AT(20,6).
     PRINT STATE AT(20,6).
+}
+
+DECLARE GLOBAL FUNCTION SPEEDSET {
+    PARAMETER SPEED.
+
+    SET OFFSET TO 0.2.
+    SET TWR TO 2*(1/(1+CONSTANT:E^(-0.5*(SHIP:AIRSPEED-SPEED-OFFSET)))).
+
+    IF SHIP:AIRSPEED - SPEED < 0 {
+        SET TWR TO 0.9.
+    }
 }
 
 LOCK THROTTLE TO THRUSTVAL.
@@ -103,13 +115,11 @@ UNTIL EDLCOMP {
         IF REALALT < 1500 AND NOT BACKSHELL {
             GEAR ON.
         }
-
         IF REALALT < 1400 AND NOT BACKSHELL {
             PRINTSTATE("BACKSHELL SEP").
             SET BACKSHELL TO TRUE.
             STAGE.
         }
-
         IF BACKSHELL AND NOT ENGINESTART {
             LOCK STEERING TO HEADING(0,60).
 
@@ -128,36 +138,33 @@ UNTIL EDLCOMP {
             LOCK THROTTLE TO THRUSTVAL.
             
             IF REALALT < 950 {
-                IF REALALT > 80 {
-                    IF SHIP:AIRSPEED > 20 {
-                        SET TWR TO 2*(1/(1+CONSTANT:E^(-0.5*(SHIP:AIRSPEED-20)))).
-                    } ELSE {
-                        SET TWR TO 0.9.
-                    }
-                    PRINTSTATE("VERTICAL DESCENT").
+                IF SHIP:GROUNDSPEED > 0.1 {
                     LOCK STEERING TO SRFRETROGRADE.
                 } ELSE {
-                    IF SHIP:AIRSPEED > 1 {
-                        SET TWR TO 2*(1/(1+CONSTANT:E^(-0.5*(SHIP:AIRSPEED-1)))).
+                    LOCK STEERING TO HEADING(0,90).
+                }
+                IF REALALT > 80 {
+                    SPEEDSET(20).
+                    PRINTSTATE("VERTICAL DESCENT").
+                } ELSE {
+                    IF NOT CUTOFF {
+                        SPEEDSET(1).
                         IF NOT CONSTVELOCITY {
                             PRINTSTATE("PERFORMING SLOWDOWN").
                         }
-                    } ELSE {
-                        IF SHIP:GROUNDSPEED > 0.2 {
-                            LOCK STEERING TO SRFRETROGRADE.
-                        } ELSE {
-                            LOCK STEERING TO HEADING(0,90).
+
+                        IF SHIP:AIRSPEED < 1.1 {
+                            PRINTSTATE("CONST VELOCITY").
+                            SET CONSTVELOCITY TO TRUE.
                         }
-                        IF SHIP:VERTICALSPEED <= 1 {
-                            SET TWR TO 0.9.
-                        }
-                        PRINTSTATE("CONST VELOCITY").
-                        SET CONSTVELOCITY TO TRUE.
                     }
                     IF REALALT < 1.0 {
                         SET TWR TO 0.0.
-                        IF SHIP:AIRSPEED <= 0.5 {
+                        SET CUTOFF TO TRUE.
+                        PRINTSTATE("CUTOFF").
+                        IF SHIP:AIRSPEED < 0.5 {
                             PRINTSTATE("EDL COMPLETE").
+                            RCS OFF.
                             SET EDLCOMP TO TRUE.
                         }
                     }
