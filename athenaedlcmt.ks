@@ -42,15 +42,6 @@ DECLARE GLOBAL FUNCTION SPEEDSET {
     IF SHIP:AIRSPEED - SPEED < -0.05 {
         SET TWR TO ((1 - (SPEED - SHIP:AIRSPEED))/2 + 0.5).
     }
-
-    // Set TWR based on surface velocity and inputted speed.
-    SET OFFSET TO 0.2.
-    SET TWR TO 2*(1/(1+CONSTANT:E^(-0.5*(SHIP:AIRSPEED-SPEED-OFFSET)))).
-
-    // If velocity falls under input speed lower TWR to below 1.0.
-    IF SHIP:AIRSPEED - SPEED < -0.05 {
-        SET TWR TO ((1 - (SPEED - SHIP:AIRSPEED))/2 + 0.5).
-    }
 }
 
 // Setup
@@ -205,8 +196,7 @@ UNTIL EDLCOMP {
                         }
 
 
-                        // If horizontal velocity exceeds 0.2 m/s, point prograde. Otherwise maintain vertical orientation
-
+                        // If horizontal velocity exceeds 0.2 m/s, point retrograde. Otherwise maintain vertical orientation
                         IF SHIP:AIRSPEED < 1.1 {
                             PRINTSTATE("CONST VELOCITY").
                             SET CONSTVELOCITY TO TRUE.
